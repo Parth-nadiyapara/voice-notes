@@ -1,4 +1,5 @@
 const mysql = require("mysql2/promise");
+require('dotenv').config();
 
 const poolOptions = {
   host: process.env.DB_HOST || "localhost",
