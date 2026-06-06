@@ -42,9 +42,19 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const uploadDir = process.env.UPLOAD_DIR || (process.env.VERCEL ? "/tmp/voice-notes-uploads" : path.join(__dirname, "uploads"));
 const SESSION_DAYS = Number(process.env.SESSION_DAYS || 30);
-const CLIENT_URL = process.env.CLIENT_URL || process.env.CLIENT_ORIGIN || "http://localhost:3000";
-const CORS_ORIGINS = (process.env.CORS_ORIGINS || process.env.CLIENT_ORIGIN || CLIENT_URL)
-  .split(",")
+const VERCEL_ORIGIN = vercelOrigin();
+const CLIENT_URL =
+  process.env.CLIENT_URL ||
+  process.env.CLIENT_ORIGIN ||
+  VERCEL_ORIGIN ||
+  "http://localhost:3000";
+const CORS_ORIGINS = [
+  ...(process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(",") : []),
+  process.env.CLIENT_ORIGIN,
+  CLIENT_URL,
+  VERCEL_ORIGIN,
+]
+  .filter(Boolean)
   .map((origin) => origin.trim())
   .filter(Boolean);
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
