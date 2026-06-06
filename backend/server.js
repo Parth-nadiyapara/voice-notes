@@ -38,6 +38,15 @@ function productionSafeUrl(value, fallback) {
   return value || fallback;
 }
 
+function isLoopbackUrl(value) {
+  try {
+    const url = new URL(value);
+    return ["localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"].includes(url.hostname);
+  } catch (_error) {
+    return false;
+  }
+}
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 const uploadDir = process.env.UPLOAD_DIR || (process.env.VERCEL ? "/tmp/voice-notes-uploads" : path.join(__dirname, "uploads"));
@@ -347,6 +356,12 @@ async function runHttpTranscription(file) {
     process.env.NVIDIA_NIM_API_KEY ||
     process.env.NVIDIA_API_KEY ||
     process.env.TRANSCRIPTION_API_KEY;
+
+  if (process.env.VERCEL && isLoopbackUrl(TRANSCRIPTION_API_URL)) {
+    throw new Error(
+      "Transcription service is configured to localhost, which Vercel cannot reach. Set NVIDIA_NIM_TRANSCRIPTION_URL to a public HTTPS transcription endpoint and redeploy the backend."
+    );
+  }
 
   const isHostedIntegrateEndpoint = TRANSCRIPTION_API_URL.includes("integrate.api.nvidia.com");
   if (isHostedIntegrateEndpoint) {
