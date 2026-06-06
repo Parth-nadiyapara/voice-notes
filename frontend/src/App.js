@@ -174,6 +174,17 @@ function App() {
     }
   }, [apiJson, notify, token, user?.role]);
 
+  const fetchAdminSummary = useCallback(async () => {
+    if (!token || user?.role !== "admin") return;
+
+    try {
+      const summary = await apiJson("/admin/summary", { headers: {} });
+      setAdminSummary(summary);
+    } catch (error) {
+      notify(error.message);
+    }
+  }, [apiJson, notify, token, user?.role]);
+
   useEffect(() => {
     const onPopState = () => setActiveView(getInitialView());
     window.addEventListener("popstate", onPopState);
@@ -236,8 +247,13 @@ function App() {
   useEffect(() => {
     setAdminOffset(0);
     setAdminUsers([]);
-    fetchAdminData({ reset: true });
-  }, [fetchAdminData]);
+    if (activeView === "adminUsers") {
+      fetchAdminData({ reset: true });
+      return;
+    }
+
+    fetchAdminSummary();
+  }, [activeView, fetchAdminData, fetchAdminSummary]);
 
   useEffect(() => {
     if (user && user.role !== "admin" && activeView === "adminUsers") {
@@ -329,13 +345,20 @@ function App() {
         setProcessing(true);
 
         try {
-          await uploadAudio(blob, activeContext);
+          const data = await uploadAudio(blob, activeContext);
+          if (data.note) {
+            setNotes((current) => [data.note, ...current.filter((note) => note.id !== data.note.id)].slice(0, PAGE_SIZE));
+            setOffset((current) => Math.max(current, Math.min(current + 1, PAGE_SIZE)));
+            setAdminSummary((current) =>
+              current ? { ...current, totalNotes: Number(current.totalNotes || 0) + 1 } : current
+            );
+          }
           notify("Voice note created.");
-          await fetchNotes({ reset: true });
-          await fetchAdminData({ reset: true });
+          setProcessing(false);
+          fetchNotes({ reset: true });
+          fetchAdminSummary();
         } catch (error) {
           notify(error.message);
-        } finally {
           setProcessing(false);
         }
       };
@@ -391,12 +414,47 @@ function App() {
       <main className="app-shell">
         <div className="aurora aurora-one" />
         <div className="aurora aurora-two" />
-        <section className="auth-shell">
-          <div className="auth-card oauth-card">
-            <p className="eyebrow">Voice Notes Studio</p>
-            <h1>Restoring your workspace.</h1>
-            <p className="auth-copy">Checking your saved session so the right notes and admin tools open where you left them.</p>
-            <div className="auth-loading" />
+        <section className="app-container app-skeleton" aria-busy="true">
+          <header className="app-header">
+            <div>
+              <p className="eyebrow">Voice Notes Studio</p>
+              <h1>Capture, refine, and search every thought.</h1>
+            </div>
+            <div className="header-actions">
+              <div className="user-chip skeleton-block" />
+              <div className="theme-toggle skeleton-block" />
+              <div className="ghost-button skeleton-button" />
+            </div>
+          </header>
+
+          <section className="admin-panel">
+            <div className="admin-stats">
+              <div className="skeleton-panel" />
+              <div className="skeleton-panel" />
+            </div>
+            <div className="pagination-bar">
+              <span className="skeleton-line" />
+              <span className="load-more compact skeleton-button" />
+            </div>
+          </section>
+
+          <section className="recorder-panel">
+            <div className="mic-button skeleton-block" />
+            <div className="recorder-copy">
+              <p className="skeleton-line short" />
+              <span className="skeleton-line" />
+            </div>
+          </section>
+
+          <div className="toolbar">
+            <div className="search-field skeleton-block" />
+            <div className="toolbar-select-skeleton skeleton-block" />
+          </div>
+
+          <div className="notes-list">
+            <div className="note-card skeleton-card" />
+            <div className="note-card skeleton-card" />
+            <div className="note-card skeleton-card" />
           </div>
         </section>
       </main>
