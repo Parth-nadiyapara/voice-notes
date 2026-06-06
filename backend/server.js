@@ -25,6 +25,19 @@ loadEnvFile();
 
 const { pool, initDb } = require("./db");
 
+function vercelOrigin() {
+  const host = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
+  return host ? `https://${host.replace(/^https?:\/\//, "")}` : "";
+}
+
+function productionSafeUrl(value, fallback) {
+  if (process.env.VERCEL && (!value || value.includes("localhost"))) {
+    return fallback;
+  }
+
+  return value || fallback;
+}
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 const uploadDir = process.env.UPLOAD_DIR || (process.env.VERCEL ? "/tmp/voice-notes-uploads" : path.join(__dirname, "uploads"));
@@ -36,8 +49,10 @@ const CORS_ORIGINS = (process.env.CORS_ORIGINS || process.env.CLIENT_ORIGIN || C
   .filter(Boolean);
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
-const GOOGLE_CALLBACK_URL =
-  process.env.GOOGLE_CALLBACK_URL || `http://localhost:${PORT}/auth/oauth/google/callback`;
+const GOOGLE_CALLBACK_URL = productionSafeUrl(
+  process.env.GOOGLE_CALLBACK_URL,
+  `${vercelOrigin() || `http://localhost:${PORT}`}/auth/oauth/google/callback`
+);
 const OAUTH_STATE_SECRET = process.env.OAUTH_STATE_SECRET || process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex");
 const TRANSCRIPTION_API_URL =
   process.env.NVIDIA_NIM_TRANSCRIPTION_URL ||
