@@ -24,8 +24,8 @@ SESSION_DAYS=30
 ADMIN_EMAILS=your-google-admin-email@example.com
 
 TRANSCRIPTION_PROVIDER=http
-NVIDIA_NIM_API_KEY=your-transcription-server-api-key
 NVIDIA_NIM_TRANSCRIPTION_URL=https://your-transcription-server.example.com/v1/audio/transcriptions
+TRANSCRIPTION_HTTP_API_KEY=your-transcription-server-api-key
 ```
 
 Add the backend callback URL to Google Cloud OAuth authorized redirect URIs.

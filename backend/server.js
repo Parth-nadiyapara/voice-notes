@@ -353,6 +353,7 @@ function runNvidiaRivaTranscription(audioPath) {
 
 async function runHttpTranscription(file) {
   const apiKey =
+    process.env.TRANSCRIPTION_HTTP_API_KEY ||
     process.env.NVIDIA_NIM_API_KEY ||
     process.env.NVIDIA_API_KEY ||
     process.env.TRANSCRIPTION_API_KEY;
@@ -371,7 +372,7 @@ async function runHttpTranscription(file) {
   }
 
   if (!apiKey && TRANSCRIPTION_API_URL.startsWith("https://")) {
-    throw new Error("Missing NVIDIA_NIM_API_KEY. Add it to backend/.env before transcribing.");
+    throw new Error("Missing TRANSCRIPTION_HTTP_API_KEY. Add it to backend/.env before transcribing.");
   }
 
   const audioBuffer = await fs.readFile(file.path);

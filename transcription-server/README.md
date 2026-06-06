@@ -38,7 +38,7 @@ After deployment, use the public URL in your backend Vercel project:
 ```env
 TRANSCRIPTION_PROVIDER=http
 NVIDIA_NIM_TRANSCRIPTION_URL=https://your-transcription-service.example.com/v1/audio/transcriptions
-NVIDIA_NIM_API_KEY=your-TRANSCRIPTION_SERVER_API_KEY-value
+TRANSCRIPTION_HTTP_API_KEY=your-TRANSCRIPTION_SERVER_API_KEY-value
 ```
 
 Redeploy the backend after changing Vercel environment variables.
