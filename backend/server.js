@@ -204,12 +204,16 @@ async function rotateSession(token) {
   await pool.execute("UPDATE sessions SET expires_at = ? WHERE token_hash = ?", [expiresAt, hashToken(token)]);
 }
 
-function requireGoogleOAuthConfig(res) {
+function requireGoogleOAuthConfig(res, next = "/") {
   if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) return true;
 
-  res.status(503).json({
-    error: "Google OAuth is not configured. Add GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_CALLBACK_URL to backend/.env.",
-  });
+  const redirectUrl = new URL("/auth/callback", CLIENT_URL);
+  redirectUrl.searchParams.set(
+    "error",
+    "Google OAuth is not configured on the backend. Add GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_CALLBACK_URL in Vercel, then redeploy."
+  );
+  redirectUrl.searchParams.set("next", next);
+  res.redirect(redirectUrl.toString());
   return false;
 }
 
@@ -431,9 +435,9 @@ app.get("/auth/oauth/providers", (_req, res) => {
 });
 
 app.get("/auth/oauth/google/start", (req, res) => {
-  if (!requireGoogleOAuthConfig(res)) return;
-
   const next = typeof req.query.next === "string" && req.query.next.startsWith("/") ? req.query.next : "/";
+  if (!requireGoogleOAuthConfig(res, next)) return;
+
   const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
 
   authUrl.searchParams.set("client_id", GOOGLE_CLIENT_ID);

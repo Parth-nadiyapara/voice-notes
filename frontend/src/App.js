@@ -223,7 +223,7 @@ function App() {
       .then((response) => response.json())
       .then((data) => setOauthProviders(data.providers || []))
       .catch(() => {
-        setOauthProviders([{ id: "google", name: "Google", enabled: false, loginUrl: "/auth/oauth/google/start" }]);
+        setOauthProviders([{ id: "google", name: "Google", enabled: true, loginUrl: "/auth/oauth/google/start" }]);
       });
   }, []);
 
@@ -278,11 +278,6 @@ function App() {
   };
 
   const startOAuth = (provider) => {
-    if (!provider.enabled) {
-      notify(`${provider.name} OAuth is not configured on the server yet.`);
-      return;
-    }
-
     const next = activeView === "adminUsers" ? "/admin/users" : "/";
     window.location.assign(`${API_URL}${provider.loginUrl}?next=${encodeURIComponent(next)}`);
   };
@@ -465,7 +460,7 @@ function App() {
     const googleProvider = oauthProviders.find((provider) => provider.id === "google") || {
       id: "google",
       name: "Google",
-      enabled: false,
+      enabled: true,
       loginUrl: "/auth/oauth/google/start",
     };
 
@@ -486,7 +481,7 @@ function App() {
               <span className="provider-mark">G</span>
               <span>
                 <strong>Continue with Google</strong>
-                <small>{googleProvider.enabled ? "OAuth 2.0 secure sign-in" : "Waiting for server setup"}</small>
+                <small>{googleProvider.enabled ? "OAuth 2.0 secure sign-in" : "Google setup needs backend env"}</small>
               </span>
             </button>
 
