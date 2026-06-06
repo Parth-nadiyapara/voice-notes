@@ -63,7 +63,9 @@ const TRANSCRIPTION_MODEL =
   process.env.TRANSCRIPTION_MODEL ||
   "openai/whisper-large-v3";
 const TRANSCRIPTION_LANGUAGE = process.env.TRANSCRIPTION_LANGUAGE || "en";
-const TRANSCRIPTION_PROVIDER = process.env.TRANSCRIPTION_PROVIDER || "nvidia-riva-hosted";
+const TRANSCRIPTION_PROVIDER =
+  process.env.TRANSCRIPTION_PROVIDER ||
+  (process.env.NVIDIA_NIM_TRANSCRIPTION_URL || process.env.TRANSCRIPTION_API_URL ? "http" : "nvidia-riva-hosted");
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || process.env.DEFAULT_ADMIN_EMAIL || "")
   .split(",")
   .map((email) => email.trim().toLowerCase())
