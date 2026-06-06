@@ -14,6 +14,7 @@ CORS_ORIGINS=https://your-frontend.vercel.app
 
 SUPABASE_DB_URL=postgresql://postgres.your-project-ref:your-password@aws-0-your-region.pooler.supabase.com:6543/postgres
 DB_SSL=true
+DB_SSL_REJECT_UNAUTHORIZED=false
 
 GOOGLE_CLIENT_ID=your-google-oauth-client-id
 GOOGLE_CLIENT_SECRET=your-rotated-google-oauth-client-secret

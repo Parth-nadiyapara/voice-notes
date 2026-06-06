@@ -11,7 +11,7 @@ if (!connectionString || connectionString === "paste-your-supabase-pooled-connec
 const poolOptions = { connectionString };
 
 if (process.env.DB_SSL !== "false") {
-  poolOptions.ssl = { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== "false" };
+  poolOptions.ssl = { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === "true" };
 }
 
 if (!global._postgresPool) {
