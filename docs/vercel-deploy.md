@@ -24,11 +24,15 @@ SESSION_DAYS=30
 ADMIN_EMAILS=your-google-admin-email@example.com
 
 TRANSCRIPTION_PROVIDER=http
-NVIDIA_NIM_API_KEY=your-key
-NVIDIA_NIM_TRANSCRIPTION_URL=https://your-transcription-endpoint/v1/audio/transcriptions
+NVIDIA_NIM_API_KEY=your-transcription-server-api-key
+NVIDIA_NIM_TRANSCRIPTION_URL=https://your-transcription-server.example.com/v1/audio/transcriptions
 ```
 
 Add the backend callback URL to Google Cloud OAuth authorized redirect URIs.
+
+If you do not already have a public transcription endpoint, deploy the Docker service in
+`transcription-server/` first. Its public URL is the value to use for
+`NVIDIA_NIM_TRANSCRIPTION_URL`.
 
 ## Frontend Project
 
