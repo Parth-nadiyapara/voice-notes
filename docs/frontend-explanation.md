@@ -16,7 +16,7 @@
 4. The audio blob is uploaded to `POST /transcribe`.
 5. After the backend returns, notes are refetched and the new note appears.
 
-The processing message is important because the audio must be uploaded, transcribed by NVIDIA NIM, saved in MySQL, and refetched.
+The processing message is important because the audio must be uploaded, transcribed by NVIDIA NIM, saved in Supabase/Postgres, and refetched.
 
 ## Authentication UI
 

@@ -12,11 +12,7 @@ Environment variables:
 CLIENT_URL=https://your-frontend.vercel.app
 CORS_ORIGINS=https://your-frontend.vercel.app
 
-DB_HOST=your-mysql-host
-DB_PORT=3306
-DB_USER=your-mysql-user
-DB_PASSWORD=your-mysql-password
-DB_NAME=voice_notes
+SUPABASE_DB_URL=postgresql://postgres.your-project-ref:your-password@aws-0-your-region.pooler.supabase.com:6543/postgres
 DB_SSL=true
 
 GOOGLE_CLIENT_ID=your-google-oauth-client-id
@@ -45,6 +41,6 @@ REACT_APP_API_URL=https://your-backend.vercel.app
 
 After changing Vercel environment variables, redeploy the project. Vercel only applies new environment variables to new deployments.
 
-## MySQL And phpMyAdmin
+## Supabase Database
 
-phpMyAdmin is only a database management UI. The app needs the real MySQL host, port, database name, username, and password from the MySQL server that phpMyAdmin manages.
+Create a Supabase project, open **Project Settings > Database**, and copy the pooled connection string. Use it as `SUPABASE_DB_URL` in the backend project. The backend creates and updates its `users`, `sessions`, and `notes` tables on startup.

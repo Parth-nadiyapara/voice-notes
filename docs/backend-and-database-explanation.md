@@ -3,15 +3,16 @@
 ## Main Files
 
 - `backend/server.js` defines authentication, transcription, notes, and admin APIs.
-- `backend/db.js` creates the MySQL pool and automatically initializes/migrates tables.
+- `backend/db.js` creates the Supabase/Postgres pool and automatically initializes/migrates tables.
 - `backend/.env.example` shows all environment variables you need.
 
 ## Database Setup
 
-You only need the MySQL database itself:
+Create a Supabase project and set the backend connection string:
 
-```sql
-CREATE DATABASE voice_notes;
+```bash
+SUPABASE_DB_URL=postgresql://postgres.your-project-ref:your-password@aws-0-your-region.pooler.supabase.com:6543/postgres
+DB_SSL=true
 ```
 
 The backend automatically creates these tables when it starts:
@@ -20,7 +21,7 @@ The backend automatically creates these tables when it starts:
 - `sessions`
 - `notes`
 
-It also adds missing `title` and `user_id` columns to older `notes` tables.
+It also adds missing OAuth and note ownership columns to older tables.
 
 ## Users Table
 

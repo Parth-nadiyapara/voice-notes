@@ -55,7 +55,7 @@ The backend sends a multipart audio request with:
 3. The backend forwards the audio to NVIDIA NIM.
 4. NVIDIA NIM returns English transcription text.
 5. The backend creates a title from the first few words.
-6. The note is saved in MySQL under the logged-in user.
+6. The note is saved in Supabase/Postgres under the logged-in user.
 7. The temporary uploaded audio file is deleted.
 
 The frontend shows `Processing...` while the API transcription and database save are happening.

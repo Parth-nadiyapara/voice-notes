@@ -4,6 +4,7 @@
   "description": "",
   "main": "server.js",
   "scripts": {
+    "db:check": "node check-db.js",
     "start": "node server.js"
   },
   "keywords": [],
@@ -15,6 +16,6 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "multer": "^2.1.1",
-    "mysql2": "^3.22.2"
+    "pg": "^8.21.0"
   }
 }

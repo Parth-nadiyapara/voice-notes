@@ -243,7 +243,7 @@ async function findOrCreateOAuthUser(profile) {
   const [[countRow]] = await pool.query("SELECT COUNT(*) AS total FROM users");
   const role = roleForEmail(email, countRow.total === 0 ? "admin" : "user");
   const [result] = await pool.execute(
-    "INSERT INTO users (name, email, oauth_provider, oauth_subject, avatar_url, last_login_at, role) VALUES (?, ?, 'google', ?, ?, NOW(), ?)",
+    "INSERT INTO users (name, email, oauth_provider, oauth_subject, avatar_url, last_login_at, role) VALUES (?, ?, 'google', ?, ?, NOW(), ?) RETURNING id",
     [name, email, subject, avatarUrl, role]
   );
 
@@ -493,7 +493,7 @@ app.post(
 
       const title = cleanTitle(req.body.title) || createTitleFromText(text);
       const [result] = await pool.execute(
-        "INSERT INTO notes (user_id, title, content) VALUES (?, ?, ?)",
+        "INSERT INTO notes (user_id, title, content) VALUES (?, ?, ?) RETURNING id",
         [req.user.id, title, text]
       );
 
