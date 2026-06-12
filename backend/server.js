@@ -362,7 +362,8 @@ async function runTranscription(file) {
 function runNvidiaRivaTranscription(audioPath) {
   return new Promise((resolve, reject) => {
     const pythonPath = process.env.PYTHON_BIN || "python3";
-    const scriptPath = path.join(__dirname, "../python/nvidia_transcribe.py");
+    const localScriptPath = path.join(__dirname, "nvidia_transcribe.py");
+    const scriptPath = existsSync(localScriptPath) ? localScriptPath : path.join(__dirname, "../python/nvidia_transcribe.py");
 
     execFile(pythonPath, [scriptPath, audioPath], { timeout: TRANSCRIPTION_TIMEOUT_MS, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
       if (error) {

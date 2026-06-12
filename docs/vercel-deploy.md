@@ -1,47 +1,16 @@
-# Vercel Deployment
+# Vercel Frontend Deployment
 
-Deploy the frontend and backend as two separate Vercel projects.
+Deploy only the frontend on Vercel. For this project, deploy the backend on
+Render using [render-backend-deploy.md](./render-backend-deploy.md), because
+transcription needs Python, ffmpeg, and a longer-running request than Vercel
+serverless functions are designed for.
 
 ## Backend Project
 
-Use `backend` as the Vercel root directory.
+Do not use Vercel for the backend when transcription runs inside the backend.
+Use Render instead.
 
-Environment variables:
-
-```env
-CLIENT_URL=https://your-frontend.vercel.app
-CORS_ORIGINS=https://your-frontend.vercel.app
-
-SUPABASE_DB_URL=postgresql://postgres.your-project-ref:your-password@aws-0-your-region.pooler.supabase.com:6543/postgres
-DB_SSL=true
-DB_SSL_REJECT_UNAUTHORIZED=false
-
-GOOGLE_CLIENT_ID=your-google-oauth-client-id
-GOOGLE_CLIENT_SECRET=your-rotated-google-oauth-client-secret
-GOOGLE_CALLBACK_URL=https://your-backend.vercel.app/auth/oauth/google/callback
-SESSION_SECRET=use-a-long-random-secret
-SESSION_DAYS=30
-ADMIN_EMAILS=your-google-admin-email@example.com
-
-TRANSCRIPTION_PROVIDER=http
-NVIDIA_NIM_TRANSCRIPTION_URL=https://your-transcription-server.example.com/v1/audio/transcriptions
-TRANSCRIPTION_JOB_API_URL=https://your-transcription-server.example.com/v1/audio/transcription-jobs
-TRANSCRIPTION_HTTP_API_KEY=your-transcription-server-api-key
-TRANSCRIPTION_CALLBACK_SECRET=choose-another-long-random-secret
-TRANSCRIPTION_ASYNC=true
-PUBLIC_BACKEND_URL=https://your-backend.vercel.app
-```
-
-Add the backend callback URL to Google Cloud OAuth authorized redirect URIs.
-
-If you do not already have a public transcription endpoint, deploy the Docker service in
-`transcription-server/` first. Its public URL is the value to use for
-`NVIDIA_NIM_TRANSCRIPTION_URL`.
-
-For Vercel, keep transcription asynchronous. The backend creates a pending note,
-starts a job on the transcription server, and returns before Vercel's request
-timeout. The transcription server calls `/transcription-callback` when the text
-is ready.
+Backend guide: [render-backend-deploy.md](./render-backend-deploy.md)
 
 ## Frontend Project
 
@@ -50,7 +19,7 @@ Use `frontend` as the Vercel root directory.
 Environment variables:
 
 ```env
-REACT_APP_API_URL=https://your-backend.vercel.app
+REACT_APP_API_URL=https://your-backend.onrender.com
 ```
 
 After changing Vercel environment variables, redeploy the project. Vercel only applies new environment variables to new deployments.
