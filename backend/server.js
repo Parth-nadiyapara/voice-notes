@@ -82,6 +82,7 @@ const TRANSCRIPTION_MODEL =
   process.env.TRANSCRIPTION_MODEL ||
   "openai/whisper-large-v3";
 const TRANSCRIPTION_LANGUAGE = process.env.TRANSCRIPTION_LANGUAGE || "en";
+const TRANSCRIPTION_TIMEOUT_MS = Number(process.env.TRANSCRIPTION_TIMEOUT_MS || 120000);
 const TRANSCRIPTION_PROVIDER =
   process.env.TRANSCRIPTION_PROVIDER ||
   (process.env.NVIDIA_NIM_TRANSCRIPTION_URL || process.env.TRANSCRIPTION_API_URL ? "http" : "nvidia-riva-hosted");
@@ -110,6 +111,10 @@ app.use(
   })
 );
 app.use(express.json({ limit: "1mb" }));
+
+app.get("/health", (_req, res) => {
+  res.json({ ok: true });
+});
 
 const ready = initDb().then(ensureDefaultAdmin);
 
@@ -343,10 +348,14 @@ function runNvidiaRivaTranscription(audioPath) {
     const pythonPath = process.env.PYTHON_BIN || "python3";
     const scriptPath = path.join(__dirname, "../python/nvidia_transcribe.py");
 
-    execFile(pythonPath, [scriptPath, audioPath], { timeout: 120000, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
+    execFile(pythonPath, [scriptPath, audioPath], { timeout: TRANSCRIPTION_TIMEOUT_MS, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
       if (error) {
         const detail = stderr?.trim() || error.message;
-        reject(new Error(`NVIDIA Riva transcription failed: ${detail}`));
+        const wrappedError = new Error(`NVIDIA Riva transcription failed: ${detail}`);
+        if (error.killed || error.signal === "SIGTERM") {
+          wrappedError.statusCode = 504;
+        }
+        reject(wrappedError);
         return;
       }
 
@@ -390,7 +399,7 @@ async function runHttpTranscription(file) {
   formData.append("temperature", "0");
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 120000);
+  const timeout = setTimeout(() => controller.abort(), TRANSCRIPTION_TIMEOUT_MS);
 
   try {
     const headers = apiKey ? { Authorization: `Bearer ${apiKey}` } : {};
@@ -412,12 +421,22 @@ async function runHttpTranscription(file) {
     }
 
     return String(data.text || "").trim();
+  } catch (error) {
+    if (error.name === "AbortError") {
+      const timeoutError = new Error(
+        `Transcription timed out after ${Math.round(TRANSCRIPTION_TIMEOUT_MS / 1000)} seconds. Record a shorter note or move transcription to an async/background job.`
+      );
+      timeoutError.statusCode = 504;
+      throw timeoutError;
+    }
+
+    throw error;
   } finally {
     clearTimeout(timeout);
   }
 }
 
-app.get("/health", (_req, res) => {
+app.get("/ready", (_req, res) => {
   res.json({ ok: true });
 });
 
@@ -687,7 +706,7 @@ app.use((error, _req, res, _next) => {
   }
 
   console.error(error);
-  res.status(500).json({ error: error.message || "Server error" });
+  res.status(error.statusCode || 500).json({ error: error.message || "Server error" });
 });
 
 if (require.main === module) {
