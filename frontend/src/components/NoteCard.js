@@ -11,7 +11,13 @@ function createFallbackTitle(content) {
 
 function NoteCard({ note, onOpen }) {
   const title = note.title?.trim() || createFallbackTitle(note.content);
-  const preview = note.content?.trim() || "No content yet.";
+  const isProcessing = note.transcription_status === "processing";
+  const isFailed = note.transcription_status === "failed";
+  const preview = isProcessing
+    ? "Transcription is processing..."
+    : isFailed
+      ? note.transcription_error || "Transcription failed."
+      : note.content?.trim() || "No content yet.";
 
   const formattedDate = new Intl.DateTimeFormat(undefined, {
     month: "short",
@@ -23,6 +29,8 @@ function NoteCard({ note, onOpen }) {
     <button className="note-card" onClick={() => onOpen(note)}>
       <strong>{title}</strong>
       <p>{preview}</p>
+      {isProcessing && <span className="note-status">Processing</span>}
+      {isFailed && <span className="note-status error">Failed</span>}
       <time>{formattedDate}</time>
     </button>
   );

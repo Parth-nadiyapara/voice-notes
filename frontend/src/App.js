@@ -38,6 +38,7 @@ function App() {
   const [adminOffset, setAdminOffset] = useState(0);
   const [adminHasMore, setAdminHasMore] = useState(false);
   const [adminLoading, setAdminLoading] = useState(false);
+  const hasProcessingNotes = notes.some((note) => note.transcription_status === "processing");
 
   const mediaRecorderRef = useRef(null);
   const streamRef = useRef(null);
@@ -245,6 +246,17 @@ function App() {
   }, [fetchNotes, order, search, user?.id]);
 
   useEffect(() => {
+    if (!token || !hasProcessingNotes) return undefined;
+
+    const interval = window.setInterval(() => {
+      fetchNotes({ reset: true });
+      fetchAdminSummary();
+    }, 4000);
+
+    return () => window.clearInterval(interval);
+  }, [fetchAdminSummary, fetchNotes, hasProcessingNotes, token]);
+
+  useEffect(() => {
     setAdminOffset(0);
     setAdminUsers([]);
     if (activeView === "adminUsers") {
@@ -348,7 +360,7 @@ function App() {
               current ? { ...current, totalNotes: Number(current.totalNotes || 0) + 1 } : current
             );
           }
-          notify("Voice note created.");
+          notify(data.note?.transcription_status === "processing" ? "Voice note is processing." : "Voice note created.");
           setProcessing(false);
           fetchNotes({ reset: true });
           fetchAdminSummary();

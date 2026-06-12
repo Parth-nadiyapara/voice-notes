@@ -536,6 +536,22 @@ button:disabled {
   font-weight: 700;
 }
 
+.note-status {
+  align-self: flex-start;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  color: var(--card-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.25rem 0.55rem;
+  text-transform: uppercase;
+}
+
+.note-status.error {
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.45);
+}
+
 .note-overlay {
   position: fixed;
   inset: 0;

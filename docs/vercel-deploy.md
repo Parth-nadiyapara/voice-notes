@@ -25,7 +25,11 @@ ADMIN_EMAILS=your-google-admin-email@example.com
 
 TRANSCRIPTION_PROVIDER=http
 NVIDIA_NIM_TRANSCRIPTION_URL=https://your-transcription-server.example.com/v1/audio/transcriptions
+TRANSCRIPTION_JOB_API_URL=https://your-transcription-server.example.com/v1/audio/transcription-jobs
 TRANSCRIPTION_HTTP_API_KEY=your-transcription-server-api-key
+TRANSCRIPTION_CALLBACK_SECRET=choose-another-long-random-secret
+TRANSCRIPTION_ASYNC=true
+PUBLIC_BACKEND_URL=https://your-backend.vercel.app
 ```
 
 Add the backend callback URL to Google Cloud OAuth authorized redirect URIs.
@@ -33,6 +37,11 @@ Add the backend callback URL to Google Cloud OAuth authorized redirect URIs.
 If you do not already have a public transcription endpoint, deploy the Docker service in
 `transcription-server/` first. Its public URL is the value to use for
 `NVIDIA_NIM_TRANSCRIPTION_URL`.
+
+For Vercel, keep transcription asynchronous. The backend creates a pending note,
+starts a job on the transcription server, and returns before Vercel's request
+timeout. The transcription server calls `/transcription-callback` when the text
+is ready.
 
 ## Frontend Project
 

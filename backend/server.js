@@ -86,6 +86,22 @@ const TRANSCRIPTION_TIMEOUT_MS = Number(process.env.TRANSCRIPTION_TIMEOUT_MS || 
 const TRANSCRIPTION_PROVIDER =
   process.env.TRANSCRIPTION_PROVIDER ||
   (process.env.NVIDIA_NIM_TRANSCRIPTION_URL || process.env.TRANSCRIPTION_API_URL ? "http" : "nvidia-riva-hosted");
+const ASYNC_TRANSCRIPTION =
+  process.env.TRANSCRIPTION_ASYNC === "true" ||
+  (process.env.TRANSCRIPTION_ASYNC !== "false" && process.env.VERCEL && TRANSCRIPTION_PROVIDER === "http");
+const TRANSCRIPTION_JOB_API_URL =
+  process.env.TRANSCRIPTION_JOB_API_URL ||
+  TRANSCRIPTION_API_URL.replace(/\/v1\/audio\/transcriptions\/?$/, "/v1/audio/transcription-jobs");
+const PUBLIC_BACKEND_URL =
+  process.env.PUBLIC_BACKEND_URL ||
+  process.env.BACKEND_PUBLIC_URL ||
+  VERCEL_ORIGIN ||
+  `http://localhost:${PORT}`;
+const TRANSCRIPTION_CALLBACK_SECRET =
+  process.env.TRANSCRIPTION_CALLBACK_SECRET ||
+  process.env.TRANSCRIPTION_HTTP_API_KEY ||
+  process.env.TRANSCRIPTION_API_KEY ||
+  "";
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || process.env.DEFAULT_ADMIN_EMAIL || "")
   .split(",")
   .map((email) => email.trim().toLowerCase())
@@ -436,6 +452,53 @@ async function runHttpTranscription(file) {
   }
 }
 
+async function startAsyncTranscriptionJob(file, noteId) {
+  const apiKey =
+    process.env.TRANSCRIPTION_HTTP_API_KEY ||
+    process.env.NVIDIA_NIM_API_KEY ||
+    process.env.NVIDIA_API_KEY ||
+    process.env.TRANSCRIPTION_API_KEY;
+
+  if (process.env.VERCEL && isLoopbackUrl(TRANSCRIPTION_JOB_API_URL)) {
+    throw new Error(
+      "Transcription job service is configured to localhost, which Vercel cannot reach. Set TRANSCRIPTION_JOB_API_URL or NVIDIA_NIM_TRANSCRIPTION_URL to a public HTTPS endpoint."
+    );
+  }
+
+  const audioBuffer = await fs.readFile(file.path);
+  const formData = new FormData();
+  const audioBlob = new Blob([audioBuffer], { type: file.mimetype || "audio/webm" });
+
+  formData.append("file", audioBlob, file.originalname || "voice-note.webm");
+  formData.append("note_id", String(noteId));
+  formData.append("callback_url", `${PUBLIC_BACKEND_URL.replace(/\/$/, "")}/transcription-callback`);
+  formData.append("callback_token", TRANSCRIPTION_CALLBACK_SECRET);
+  formData.append("model", TRANSCRIPTION_MODEL);
+  formData.append("language", TRANSCRIPTION_LANGUAGE);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), Number(process.env.TRANSCRIPTION_JOB_START_TIMEOUT_MS || 15000));
+
+  try {
+    const headers = apiKey ? { Authorization: `Bearer ${apiKey}` } : {};
+    const response = await fetch(TRANSCRIPTION_JOB_API_URL, {
+      method: "POST",
+      headers,
+      body: formData,
+      signal: controller.signal,
+    });
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(data.error || `Transcription job failed to start (${response.status})`);
+    }
+
+    return data;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 app.get("/ready", (_req, res) => {
   res.json({ ok: true });
 });
@@ -551,6 +614,37 @@ app.post(
     }
 
     try {
+      if (ASYNC_TRANSCRIPTION) {
+        const pendingTitle = cleanTitle(req.body.title) || "Processing voice note";
+        const [result] = await pool.execute(
+          "INSERT INTO notes (user_id, title, content, transcription_status) VALUES (?, ?, ?, 'processing') RETURNING id",
+          [req.user.id, pendingTitle, "Transcription is processing..."]
+        );
+        const noteId = result.insertId;
+
+        try {
+          await startAsyncTranscriptionJob(req.file, noteId);
+        } catch (error) {
+          await pool.execute(
+            "UPDATE notes SET transcription_status = 'failed', transcription_error = ?, content = ? WHERE id = ? AND user_id = ?",
+            [error.message, "Transcription failed. Please try recording again.", noteId, req.user.id]
+          );
+          throw error;
+        }
+
+        return res.status(202).json({
+          note: {
+            id: noteId,
+            user_id: req.user.id,
+            title: pendingTitle,
+            content: "Transcription is processing...",
+            transcription_status: "processing",
+            transcription_error: null,
+            created_at: new Date().toISOString(),
+          },
+        });
+      }
+
       const text = await runTranscription(req.file);
 
       if (!text) {
@@ -569,12 +663,50 @@ app.post(
           user_id: req.user.id,
           title,
           content: text,
+          transcription_status: "completed",
+          transcription_error: null,
           created_at: new Date().toISOString(),
         },
       });
     } finally {
       await fs.unlink(req.file.path).catch(() => {});
     }
+  })
+);
+
+app.post(
+  "/transcription-callback",
+  asyncHandler(async (req, res) => {
+    const expectedToken = TRANSCRIPTION_CALLBACK_SECRET;
+    const receivedToken = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+
+    if (expectedToken && receivedToken !== expectedToken) {
+      return res.status(401).json({ error: "Invalid transcription callback token" });
+    }
+
+    const noteId = parseInt(req.body.note_id, 10);
+    const text = typeof req.body.text === "string" ? req.body.text.trim() : "";
+    const error = typeof req.body.error === "string" ? req.body.error.trim() : "";
+
+    if (!Number.isInteger(noteId) || noteId < 1) {
+      return res.status(400).json({ error: "Invalid note id" });
+    }
+
+    if (error || !text) {
+      await pool.execute(
+        "UPDATE notes SET transcription_status = 'failed', transcription_error = ?, content = ? WHERE id = ?",
+        [error || "Empty transcription", "Transcription failed. Please try recording again.", noteId]
+      );
+      return res.json({ ok: true });
+    }
+
+    const title = createTitleFromText(text);
+    await pool.execute(
+      "UPDATE notes SET title = CASE WHEN title = 'Processing voice note' THEN ? ELSE title END, content = ?, transcription_status = 'completed', transcription_error = NULL WHERE id = ?",
+      [title, text, noteId]
+    );
+
+    res.json({ ok: true });
   })
 );
 
@@ -596,7 +728,7 @@ app.get(
 
     const whereSql = `WHERE ${where.join(" AND ")}`;
     const [notes] = await pool.query(
-      `SELECT id, user_id, title, content, created_at FROM notes ${whereSql} ORDER BY created_at ${order}, id ${order} LIMIT ? OFFSET ?`,
+      `SELECT id, user_id, title, content, transcription_status, transcription_error, created_at FROM notes ${whereSql} ORDER BY created_at ${order}, id ${order} LIMIT ? OFFSET ?`,
       [...params, limit, offset]
     );
 
@@ -629,7 +761,7 @@ app.put(
     }
 
     const [result] = await pool.execute(
-      "UPDATE notes SET title = ?, content = ? WHERE id = ? AND user_id = ?",
+      "UPDATE notes SET title = ?, content = ?, transcription_status = 'completed', transcription_error = NULL WHERE id = ? AND user_id = ?",
       [title, content, id, req.user.id]
     );
 
@@ -637,7 +769,7 @@ app.put(
       return res.status(404).json({ error: "Note not found" });
     }
 
-    res.json({ id, title, content });
+    res.json({ id, title, content, transcription_status: "completed", transcription_error: null });
   })
 );
 

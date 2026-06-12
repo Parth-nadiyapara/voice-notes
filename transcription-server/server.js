@@ -62,6 +62,39 @@ function transcribe(audioPath) {
   });
 }
 
+async function postCallback(callbackUrl, callbackToken, payload) {
+  const headers = { "Content-Type": "application/json" };
+  if (callbackToken) {
+    headers.Authorization = `Bearer ${callbackToken}`;
+  }
+
+  const response = await fetch(callbackUrl, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`Callback failed (${response.status}): ${detail}`);
+  }
+}
+
+async function processTranscriptionJob({ file, noteId, callbackUrl, callbackToken }) {
+  try {
+    const text = await transcribe(file.path);
+    await postCallback(callbackUrl, callbackToken, { note_id: noteId, text });
+  } catch (error) {
+    console.error(error);
+    await postCallback(callbackUrl, callbackToken, {
+      note_id: noteId,
+      error: error.message || "Transcription failed",
+    }).catch((callbackError) => console.error(callbackError));
+  } finally {
+    await fs.unlink(file.path).catch(() => {});
+  }
+}
+
 app.use(cors());
 
 app.get("/health", (_req, res) => {
@@ -89,6 +122,34 @@ app.post(
     } finally {
       await fs.unlink(file.path).catch(() => {});
     }
+  }
+);
+
+app.post(
+  "/v1/audio/transcription-jobs",
+  requireApiKey,
+  upload.fields([
+    { name: "file", maxCount: 1 },
+    { name: "audio", maxCount: 1 },
+  ]),
+  async (req, res) => {
+    const file = req.files?.file?.[0] || req.files?.audio?.[0];
+    const callbackUrl = String(req.body.callback_url || "");
+    const callbackToken = String(req.body.callback_token || "");
+    const noteId = String(req.body.note_id || "");
+
+    if (!file) {
+      return res.status(400).json({ error: "Audio file is required" });
+    }
+
+    if (!callbackUrl || !noteId) {
+      await fs.unlink(file.path).catch(() => {});
+      return res.status(400).json({ error: "callback_url and note_id are required" });
+    }
+
+    const jobId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    setImmediate(() => processTranscriptionJob({ file, noteId, callbackUrl, callbackToken }));
+    res.status(202).json({ jobId, status: "processing" });
   }
 );
 

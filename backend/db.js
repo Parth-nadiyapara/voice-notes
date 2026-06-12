@@ -87,6 +87,8 @@ async function initDb() {
 
   await pgPool.query("ALTER TABLE notes ADD COLUMN IF NOT EXISTS title VARCHAR(255) NULL");
   await pgPool.query("ALTER TABLE notes ADD COLUMN IF NOT EXISTS user_id BIGINT NULL REFERENCES users(id) ON DELETE CASCADE");
+  await pgPool.query("ALTER TABLE notes ADD COLUMN IF NOT EXISTS transcription_status VARCHAR(20) NOT NULL DEFAULT 'completed'");
+  await pgPool.query("ALTER TABLE notes ADD COLUMN IF NOT EXISTS transcription_error TEXT NULL");
   await pgPool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS oauth_provider VARCHAR(40) NULL");
   await pgPool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS oauth_subject VARCHAR(255) NULL");
   await pgPool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500) NULL");
@@ -95,6 +97,7 @@ async function initDb() {
   await pgPool.query("CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions(user_id)");
   await pgPool.query("CREATE INDEX IF NOT EXISTS sessions_token_hash_idx ON sessions(token_hash)");
   await pgPool.query("CREATE INDEX IF NOT EXISTS notes_user_id_idx ON notes(user_id)");
+  await pgPool.query("CREATE INDEX IF NOT EXISTS notes_transcription_status_idx ON notes(transcription_status)");
   await pgPool.query(
     "CREATE UNIQUE INDEX IF NOT EXISTS users_oauth_provider_subject_idx ON users(oauth_provider, oauth_subject)"
   );

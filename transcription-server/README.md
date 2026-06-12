@@ -4,6 +4,7 @@ This service exposes the HTTP endpoint your Vercel backend expects:
 
 ```text
 POST /v1/audio/transcriptions
+POST /v1/audio/transcription-jobs
 ```
 
 It accepts multipart audio under `file` or `audio`, calls NVIDIA Riva/gRPC, and returns:
@@ -11,6 +12,10 @@ It accepts multipart audio under `file` or `audio`, calls NVIDIA Riva/gRPC, and 
 ```json
 { "text": "transcribed text" }
 ```
+
+For timeout-safe deployments, use `/v1/audio/transcription-jobs`. It returns
+`202` immediately, processes the audio in the background, and posts the result to
+the backend callback URL.
 
 ## Required Environment Variables
 
