@@ -8,6 +8,35 @@ if (!connectionString || connectionString === "paste-your-supabase-pooled-connec
   throw new Error("Missing SUPABASE_DB_URL. Add your Supabase pooled database connection string to backend/.env.");
 }
 
+function validateConnectionString(value) {
+  if (/\bDB_SSL\s*=/.test(value) || /\bDB_SSL_REJECT_UNAUTHORIZED\s*=/.test(value)) {
+    throw new Error(
+      "Invalid SUPABASE_DB_URL: it contains another environment variable. In Render, SUPABASE_DB_URL must be only the PostgreSQL URL, and DB_SSL must be a separate variable."
+    );
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch (_error) {
+    throw new Error("Invalid SUPABASE_DB_URL: expected a PostgreSQL connection URL from Supabase.");
+  }
+
+  if (!["postgres:", "postgresql:"].includes(parsed.protocol)) {
+    throw new Error("Invalid SUPABASE_DB_URL: it must start with postgresql://.");
+  }
+
+  if (!parsed.hostname || !parsed.pathname || parsed.pathname === "/") {
+    throw new Error("Invalid SUPABASE_DB_URL: missing database host or database name.");
+  }
+
+  if (parsed.password.includes("@")) {
+    throw new Error("Invalid SUPABASE_DB_URL: encode @ in the database password as %40.");
+  }
+}
+
+validateConnectionString(connectionString);
+
 const poolOptions = { connectionString };
 
 if (process.env.DB_SSL !== "false") {

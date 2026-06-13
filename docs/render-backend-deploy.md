@@ -50,6 +50,14 @@ TRANSCRIPTION_LANGUAGE_CODE=en-US
 TRANSCRIPTION_TIMEOUT_MS=300000
 ```
 
+Add these as separate Render environment variables. Do not paste multiple lines
+into the `SUPABASE_DB_URL` value. If Render logs say a database like
+`postgresDB_SSL=true` does not exist, `DB_SSL=true` was accidentally appended to
+`SUPABASE_DB_URL`.
+
+If your Supabase password contains special characters, URL-encode them inside
+`SUPABASE_DB_URL`. For example, `@` must become `%40`.
+
 Do not set `NVIDIA_NIM_TRANSCRIPTION_URL`, `TRANSCRIPTION_API_URL`,
 `TRANSCRIPTION_JOB_API_URL`, or `TRANSCRIPTION_HTTP_API_KEY` for this single
 backend deployment.
