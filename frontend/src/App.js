@@ -9,9 +9,30 @@ const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3001";
 const PAGE_SIZE = 10;
 const ADMIN_PAGE_SIZE = 8;
 const TOKEN_KEY = "voice_notes_token";
+const API_TIMEOUT_MS = 15000;
 
 function getInitialView() {
   return window.location.pathname === "/admin/users" ? "adminUsers" : "home";
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = API_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("Backend is not responding. Check REACT_APP_API_URL and redeploy the frontend.");
+    }
+
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
 }
 
 function App() {
@@ -94,7 +115,7 @@ function App() {
 
   const apiJson = useCallback(
     async (path, options = {}) => {
-      const response = await fetch(`${API_URL}${path}`, {
+      const response = await fetchWithTimeout(`${API_URL}${path}`, {
         ...options,
         headers: authHeaders({
           "Content-Type": "application/json",
@@ -220,7 +241,7 @@ function App() {
   }, [notify]);
 
   useEffect(() => {
-    fetch(`${API_URL}/auth/oauth/providers`)
+    fetchWithTimeout(`${API_URL}/auth/oauth/providers`)
       .then((response) => response.json())
       .then((data) => setOauthProviders(data.providers || []))
       .catch(() => {
